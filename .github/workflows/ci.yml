@@ -21,18 +21,15 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: "npm"
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: ${{ github.workspace }}/package-lock.json
 
       - name: Install dependencies
         run: npm ci
-        working-directory: .
 
       - name: Build
         run: npm run build
-        working-directory: .
 
       - name: Run tests
         run: npm test
-        working-directory: .
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
