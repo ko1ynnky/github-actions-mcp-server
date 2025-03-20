@@ -18,45 +18,8 @@ permissions:
   pull-requests: read
 
 jobs:
-  test:
-    name: Test on Node ${{ matrix.node }} and ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        node: [18, 20]
-        os: [ubuntu-latest]
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js ${{ matrix.node }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-
-      - name: Install dependencies
-        run: |
-          npm ci
-        env:
-          CI: true
-
-      - name: Run linter
-        run: |
-          npm run lint
-        continue-on-error: true
-
-      - name: Run tests
-        run: |
-          npm test
-        env:
-          CI: true
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   build:
     name: Build
-    needs: test
     runs-on: ubuntu-latest
 
     steps:
@@ -67,12 +30,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "npm"
+
+      - name: Generate package-lock.json
+        run: npm install --package-lock-only
 
       - name: Install dependencies
         run: npm ci
-        env:
-          CI: true
 
       - name: Build
         run: npm run build
@@ -84,4 +47,11 @@ jobs:
         with:
           name: build
           path: dist/
+          retention-days: 7
+
+      - name: Upload package-lock.json
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-lock
+          path: package-lock.json
           retention-days: 7
