@@ -124,8 +124,8 @@ First, make sure you have built the project (see Build section below). Then, add
 Clone the repository and build:
 
 ```bash
-git clone https://github.com/your-username/github-actions-mcp.git
-cd github-actions-mcp
+git clone https://github.com/ko1ynnky/github-actions-mcp-server.git
+cd github-actions-mcp-server
 npm install
 npm run build
 ```
