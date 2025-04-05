@@ -109,7 +109,7 @@ First, make sure you have built the project (see Build section below). Then, add
     "github-actions": {
       "command": "node",
       "args": [
-        "<path-to-your-project>/dist/index.js"
+        "<path-to-mcp-server>/dist/index.js"
       ],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_TOKEN>"
@@ -124,8 +124,8 @@ First, make sure you have built the project (see Build section below). Then, add
 Clone the repository and build:
 
 ```bash
-git clone https://github.com/your-username/github-actions-mcp.git
-cd github-actions-mcp
+git clone https://github.com/ko1ynnky/github-actions-mcp-server.git
+cd github-actions-mcp-server
 npm install
 npm run build
 ```
