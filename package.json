@@ -20,7 +20,7 @@
     "test": "echo 'No tests specified' && exit 0"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.7.0",
+    "@modelcontextprotocol/sdk": "1.8.0",
     "@types/node": "22.13.14",
     "node-fetch": "^3.3.2",
     "universal-user-agent": "^7.0.2",
