@@ -1,6 +1,6 @@
 # GitHub Actions MCP Server
 
-MCP Server for the GitHub Actions API, enabling AI assistants to manage and operate GitHub Actions workflows.
+MCP Server for the GitHub Actions API, enabling AI assistants to manage and operate GitHub Actions workflows. Compatible with multiple AI coding assistants including Claude Desktop, Codeium, and Windsurf.
 
 ### Features
 
@@ -99,7 +99,11 @@ MCP Server for the GitHub Actions API, enabling AI assistants to manage and oper
      - `runId` (number): The ID of the workflow run
    - Returns: Status of the re-run operation
 
-### Usage with Claude Desktop
+### Usage with AI Coding Assistants
+
+This MCP server is compatible with multiple AI coding assistants including Claude Desktop, Codeium, and Windsurf.
+
+#### Claude Desktop
 
 First, make sure you have built the project (see Build section below). Then, add the following to your `claude_desktop_config.json`:
 
@@ -119,7 +123,33 @@ First, make sure you have built the project (see Build section below). Then, add
 }
 ```
 
+#### Codeium
+
+Add the following configuration to your Codeium MCP config file (typically at `~/.codeium/windsurf/mcp_config.json` on Unix-based systems or `%USERPROFILE%\.codeium\windsurf\mcp_config.json` on Windows):
+
+```json
+{
+  "mcpServers": {
+    "github-actions": {
+      "command": "node",
+      "args": [
+        "<path-to-mcp-server>/dist/index.js"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_TOKEN>"
+      }
+    }
+  }
+}
+```
+
+#### Windsurf
+
+Windsurf uses the same configuration format as Codeium. Add the server to your Windsurf MCP configuration as shown above for Codeium.
+
 ## Build
+
+### Unix/Linux/macOS
 
 Clone the repository and build:
 
@@ -130,7 +160,24 @@ npm install
 npm run build
 ```
 
-This will create the necessary files in the `dist` directory that you'll need to run the MCP server.
+### Windows
+
+For Windows systems, use the Windows-specific build command:
+
+```bash
+git clone https://github.com/ko1ynnky/github-actions-mcp-server.git
+cd github-actions-mcp-server
+npm install
+npm run build:win
+```
+
+Alternatively, you can use the included batch file:
+
+```bash
+run-server.bat [optional-github-token]
+```
+
+This will create the necessary files in the `dist` directory that you'll need to run the MCP server. For more detailed Windows-specific instructions, see the [WINDOWS.md](WINDOWS.md) file.
 
 ## Usage Examples
 
