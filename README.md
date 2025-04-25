@@ -177,7 +177,58 @@ Alternatively, you can use the included batch file:
 run-server.bat [optional-github-token]
 ```
 
-This will create the necessary files in the `dist` directory that you'll need to run the MCP server. For more detailed Windows-specific instructions, see the [WINDOWS.md](WINDOWS.md) file.
+This will create the necessary files in the `dist` directory that you'll need to run the MCP server.
+
+#### Windows-Specific Instructions
+
+**Prerequisites**
+- Node.js (v14 or higher)
+- npm (v6 or higher)
+
+**Running the Server on Windows**
+
+1. Using the batch file (simplest method):
+   ```
+   run-server.bat [optional-github-token]
+   ```
+   This will check if the build exists, build if needed, and start the server.
+
+2. Using npm directly:
+   ```
+   npm run start
+   ```
+
+**Setting GitHub Personal Access Token on Windows**
+
+For full functionality and to avoid rate limiting, you need to set your GitHub Personal Access Token.
+
+Options:
+1. Pass it as a parameter to the batch file:
+   ```
+   run-server.bat your_github_token_here
+   ```
+
+2. Set it as an environment variable:
+   ```
+   set GITHUB_PERSONAL_ACCESS_TOKEN=your_github_token_here
+   npm run start
+   ```
+
+**Troubleshooting Windows Issues**
+
+If you encounter issues:
+
+1. **Build errors**: Make sure TypeScript is installed correctly.
+   ```
+   npm install -g typescript
+   ```
+
+2. **Permission issues**: Ensure you're running the commands in a command prompt with appropriate permissions.
+
+3. **Node.js errors**: Verify you're using a compatible Node.js version.
+   ```
+   node --version
+   ```
 
 ## Usage Examples
 
