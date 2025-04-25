@@ -12,12 +12,13 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc && chmod +x dist/index.js",
+    "build": "tsc && node -e \"require('fs').chmodSync('./dist/index.js', 0o755)\"",
+    "build:win": "tsc",
     "start": "node dist/index.js",
     "dev": "tsc && node dist/index.js",
     "watch": "tsc --watch",
     "lint": "tsc --noEmit",
-    "test": "echo 'No tests specified' && exit 0"
+    "test": "echo No tests specified && exit 0"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.10.1",

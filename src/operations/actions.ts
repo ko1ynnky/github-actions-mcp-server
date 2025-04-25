@@ -25,7 +25,7 @@ export const ListWorkflowsSchema = z.object({
 export const GetWorkflowSchema = z.object({
   owner: z.string().describe("Repository owner (username or organization)"),
   repo: z.string().describe("Repository name"),
-  workflowId: z.union([z.string(), z.number()]).describe("The ID of the workflow or filename"),
+  workflowId: z.string().describe("The ID of the workflow or filename (string or number)"),
 });
 
 // Get workflow usage schema
@@ -35,7 +35,7 @@ export const GetWorkflowUsageSchema = GetWorkflowSchema;
 export const ListWorkflowRunsSchema = z.object({
   owner: z.string().describe("Repository owner (username or organization)"),
   repo: z.string().describe("Repository name"),
-  workflowId: z.union([z.string(), z.number()]).optional().describe("The ID of the workflow or filename"),
+  workflowId: z.string().optional().describe("The ID of the workflow or filename (string or number)"),
   actor: z.string().optional().describe("Returns someone's workflow runs. Use the login for the user"),
   branch: z.string().optional().describe("Returns workflow runs associated with a branch"),
   event: z.string().optional().describe("Returns workflow runs triggered by the event"),
@@ -68,7 +68,7 @@ export const GetWorkflowRunJobsSchema = z.object({
 export const TriggerWorkflowSchema = z.object({
   owner: z.string().describe("Repository owner (username or organization)"),
   repo: z.string().describe("Repository name"),
-  workflowId: z.union([z.string(), z.number()]).describe("The ID of the workflow or filename"),
+  workflowId: z.string().describe("The ID of the workflow or filename (string or number)"),
   ref: z.string().describe("The reference of the workflow run (branch, tag, or SHA)"),
   inputs: z.record(z.string(), z.string()).optional().describe("Input parameters for the workflow"),
 });
