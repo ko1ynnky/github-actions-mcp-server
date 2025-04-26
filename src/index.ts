@@ -1,3 +1,12 @@
+console.log('[MCP Server Test] Node.js process started via mcp_config.json');
+
+// Keep the process alive for a few seconds to see if it launches at all
+setTimeout(() => {
+  console.log('[MCP Server Test] Process exiting after timeout.');
+  process.exit(0);
+}, 5000); // 5 seconds
+
+/*
 // Platform-independent entry point
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -22,6 +31,16 @@ import {
   isGitHubError,
 } from './common/errors.js';
 import { VERSION } from "./common/version.js";
+
+// Add a global handler for uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('FATAL: Uncaught Exception:', error);
+  // Optionally log stack trace: console.error(error.stack);
+  // Consider exiting gracefully or logging more details before exiting
+  process.exit(1); // Ensure process exits on uncaught exceptions
+});
+
+console.log('[MCP Server Log] Initializing GitHub Actions MCP Server...'); // Log 1
 
 const server = new Server(
   {
@@ -252,12 +271,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 async function runServer() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error("GitHub Actions MCP Server running on stdio");
+  console.log('[MCP Server Log] Entering runServer function...'); // Log 2
+  try {
+    console.log('[MCP Server Log] Creating StdioServerTransport...'); // Log 3
+    const transport = new StdioServerTransport();
+    console.log('[MCP Server Log] Starting server...'); // Log 4
+    await server.connect(transport);
+    console.log('[MCP Server Log] Server started successfully.');
+  } catch (error) {
+    console.error('[MCP Server Log] Error during server startup:', error);
+    process.exit(1);
+  }
 }
 
+console.log('[MCP Server Log] Calling runServer...'); // Log 5
 runServer().catch((error) => {
   console.error("Fatal error in main():", error);
   process.exit(1);
 });
+*/
