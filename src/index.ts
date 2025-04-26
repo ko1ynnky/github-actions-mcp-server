@@ -1,17 +1,7 @@
-console.log('[MCP Server Test] Node.js process started via mcp_config.json');
-
-// Keep the process alive for a few seconds to see if it launches at all
-setTimeout(() => {
-  console.log('[MCP Server Test] Process exiting after timeout.');
-  process.exit(0);
-}, 5000); // 5 seconds
-
-// Platform-independent entry point
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"; // Use McpServer
 import { 
     CallToolRequestSchema, 
     ListToolsRequestSchema 
@@ -39,17 +29,22 @@ import { VERSION } from "./common/version.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const logFilePath = path.join(__dirname, 'mcp-startup.log');
+const logFilePath = path.join(__dirname, '..', 'dist', 'mcp-startup.log'); // Ensure log path points to dist
 
 // Simple file logger
 function logToFile(message: string) {
   const timestamp = new Date().toISOString();
   try {
+    // Ensure dist directory exists before logging
+    const logDir = path.dirname(logFilePath);
+    if (!fs.existsSync(logDir)){
+        fs.mkdirSync(logDir, { recursive: true });
+    }
     fs.appendFileSync(logFilePath, `[${timestamp}] ${message}\n`, 'utf8');
-  } catch (err: any) {
-    const errorMsg = `[File Log Error] Failed to write to ${logFilePath}: ${err?.message || err}`;
+  } catch (err: any) { // Use any for broader catch
+    const errorMsg = `[File Log Error] Failed to write to ${logFilePath}: ${err?.message || String(err)}`;
     console.error(errorMsg);
-    if (err?.stack) {
+    if (err instanceof Error && err.stack) { // Check if error has stack
       console.error(err.stack);
     }
     console.error(`[Original Message] ${message}`);
@@ -57,11 +52,11 @@ function logToFile(message: string) {
 }
 
 // Clear log file on startup
-try { fs.writeFileSync(logFilePath, '', 'utf8'); } catch {} 
+try { fs.writeFileSync(logFilePath, '', 'utf8'); } catch {}
 
 // Add a global handler for uncaught exceptions
-process.on('uncaughtException', (error) => {
-  logToFile('FATAL: Uncaught Exception: ' + (error?.message || error));
+process.on('uncaughtException', (error: Error) => { // Type error
+  logToFile('FATAL: Uncaught Exception: ' + (error?.message || String(error)));
   if (error?.stack) {
     logToFile('Stack Trace: ' + error.stack);
   }
@@ -80,7 +75,7 @@ logToFile('[MCP Server Log] GitHub token found.');
 const octokit = new Octokit({ auth: GITHUB_TOKEN });
 logToFile('[MCP Server Log] Octokit initialized.');
 
-const server = new Server(
+const server = new McpServer(
   {
     name: "github-actions-mcp-server",
     version: VERSION, 
@@ -118,215 +113,122 @@ function formatGitHubError(error: GitHubError): string {
   return message;
 }
 
-// Restore ListTools
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  logToFile('[MCP Server Log] Received ListTools request.'); 
-  return {
-    tools: [
-       {
-        toolId: "list_workflows",
-        description: "List workflows in a GitHub repository",
-        inputSchema: zodToJsonSchema(actions.ListWorkflowsSchema),
-      },
-      {
-        toolId: "get_workflow",
-        description: "Get details of a specific workflow",
-        inputSchema: zodToJsonSchema(actions.GetWorkflowSchema),
-      },
-      {
-        toolId: "get_workflow_usage",
-        description: "Get usage statistics of a workflow",
-        inputSchema: zodToJsonSchema(actions.GetWorkflowUsageSchema),
-      },
-      {
-        toolId: "list_workflow_runs",
-        description: "List all workflow runs for a repository or a specific workflow",
-        inputSchema: zodToJsonSchema(actions.ListWorkflowRunsSchema),
-      },
-      {
-        toolId: "get_workflow_run",
-        description: "Get details of a specific workflow run",
-        inputSchema: zodToJsonSchema(actions.GetWorkflowRunSchema),
-      },
-      {
-        toolId: "get_workflow_run_jobs",
-        description: "Get jobs for a specific workflow run",
-        inputSchema: zodToJsonSchema(actions.GetWorkflowRunJobsSchema),
-      },
-      {
-        toolId: "trigger_workflow",
-        description: "Trigger a workflow run",
-        inputSchema: zodToJsonSchema(actions.TriggerWorkflowSchema),
-      },
-      {
-        toolId: "cancel_workflow_run",
-        description: "Cancel a workflow run",
-        inputSchema: zodToJsonSchema(actions.CancelWorkflowRunSchema),
-      },
-      {
-        toolId: "rerun_workflow",
-        description: "Re-run a workflow run",
-        inputSchema: zodToJsonSchema(actions.RerunWorkflowSchema),
-      },
-    ]
-  };
-});
+// Restore ListTools using server.tool()
+server.tool(
+    "list_workflows",
+    actions.ListWorkflowsSchema.shape,
+    async (request: any) => {
+      logToFile('[MCP Server Log] Received list_workflows request (via server.tool)');
+      // Args are already parsed by the McpServer using the provided schema
+      const result = await actions.listWorkflows(request.owner, request.repo, request.page, request.perPage);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+);
 
-// Restore full CallTool
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  logToFile(`[MCP Server Log] Received CallTool request for tool: ${request.params.toolId}`); 
-  try {
-    if (!request.params.arguments) {
-      throw new Error("Arguments are required");
+// Register other tools using server.tool()
+server.tool(
+    "get_workflow",
+    actions.GetWorkflowSchema.shape,
+    async (request: any) => {
+        const result = await actions.getWorkflow(request.owner, request.repo, request.workflowId);
+        return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
+);
 
-    switch (request.params.toolId) { 
-      case "list_workflows": {
-        const args = actions.ListWorkflowsSchema.parse(request.params.arguments);
-        const result = await actions.listWorkflows(
-          args.owner,
-          args.repo,
-          args.page,
-          args.perPage
-        );
-        return { content: [{ type: "text", text: JSON.stringify(result) }] }; 
-      }
-      
-      case "get_workflow": {
-        const args = actions.GetWorkflowSchema.parse(request.params.arguments);
-        const result = await actions.getWorkflow(
-          args.owner,
-          args.repo,
-          args.workflowId
-        );
-         return { content: [{ type: "text", text: JSON.stringify(result) }] };
-      }
-      
-      case "get_workflow_usage": {
-        const args = actions.GetWorkflowUsageSchema.parse(request.params.arguments);
-        const result = await actions.getWorkflowUsage(
-          args.owner,
-          args.repo,
-          args.workflowId
-        );
-         return { content: [{ type: "text", text: JSON.stringify(result) }] };
-      }
-      
-      case "list_workflow_runs": {
-        const args = actions.ListWorkflowRunsSchema.parse(request.params.arguments);
-        const { owner, repo, workflowId, ...options } = args;
-        const result = await actions.listWorkflowRuns(owner, repo, {
-          workflowId,
-          ...options
-        });
-         return { content: [{ type: "text", text: JSON.stringify(result) }] };
-      }
-      
-      case "get_workflow_run": {
-        const args = actions.GetWorkflowRunSchema.parse(request.params.arguments);
-        const result = await actions.getWorkflowRun(
-          args.owner,
-          args.repo,
-          args.runId
-        );
-         return { content: [{ type: "text", text: JSON.stringify(result) }] };
-      }
-      
-      case "get_workflow_run_jobs": {
-        const args = actions.GetWorkflowRunJobsSchema.parse(request.params.arguments);
-        const { owner, repo, runId, filter, page, perPage } = args;
-        const result = await actions.getWorkflowRunJobs(
-          owner,
-          repo,
-          runId,
-          filter,
-          page,
-          perPage
-        );
-         return { content: [{ type: "text", text: JSON.stringify(result) }] };
-      }
-      
-      case "trigger_workflow": {
-        const args = actions.TriggerWorkflowSchema.parse(request.params.arguments);
-        const { owner, repo, workflowId, ref, inputs } = args;
-        const result = await actions.triggerWorkflow(
-          owner,
-          repo,
-          workflowId,
-          ref,
-          inputs
-        );
-         return { content: [{ type: "text", text: JSON.stringify(result) }] };
-      }
-      
-      case "cancel_workflow_run": {
-        const args = actions.CancelWorkflowRunSchema.parse(request.params.arguments);
-        const result = await actions.cancelWorkflowRun(
-          args.owner,
-          args.repo,
-          args.runId
-        );
-         return { content: [{ type: "text", text: JSON.stringify(result) }] }; 
-      }
-      
-      case "rerun_workflow": {
-        const args = actions.RerunWorkflowSchema.parse(request.params.arguments);
-        const result = await actions.rerunWorkflowRun( 
-          args.owner,
-          args.repo,
-          args.runId
-        );
-         return { content: [{ type: "text", text: JSON.stringify(result) }] }; 
-      }
+server.tool(
+    "get_workflow_usage",
+    actions.GetWorkflowUsageSchema.shape,
+    async (request: any) => {
+        const result = await actions.getWorkflowUsage(request.owner, request.repo, request.workflowId);
+        return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+);
 
-      default:
-         logToFile(`[MCP Server Log] Unknown tool requested: ${request.params.toolId}`);
-         throw new Error(`Unknown tool ID: ${request.params.toolId}`);
+server.tool(
+    "list_workflow_runs",
+    actions.ListWorkflowRunsSchema.shape,
+    async (request: any) => {
+        const { owner, repo, workflowId, ...options } = request;
+        const result = await actions.listWorkflowRuns(owner, repo, { workflowId, ...options });
+        return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
-  } catch (error: any) {
-    logToFile(`[MCP Server Log] Error in CallTool handler for ${request.params.toolId}: ${error?.message || error}`); 
-    if (error?.stack) {
-      logToFile('CallTool Error Stack Trace: ' + error.stack);
-    }
-    // Restore full error handling
-     if (error instanceof z.ZodError) {
-      throw new Error(`Invalid input: ${JSON.stringify(error.errors)}`);
-    }
-    if (isGitHubError(error)) {
-      throw new Error(formatGitHubError(error));
-    }
-    throw error; 
-  }
-});
+);
 
-async function runServer() {
-  logToFile('[MCP Server Log] Entering runServer function...'); 
-  try {
-    logToFile('[MCP Server Log] Creating StdioServerTransport...');
-    const transport = new StdioServerTransport();
-    logToFile('[MCP Server Log] Starting server connection...');
-    await server.connect(transport);
-    logToFile('[MCP Server Log] Server connection established.');
-    
-    // Attempt to keep the process alive explicitly
-    logToFile('[MCP Server Log] Calling process.stdin.resume()...');
-    process.stdin.resume();
-    logToFile('[MCP Server Log] process.stdin.resume() called.');
-    
-  } catch (error: any) {
-    logToFile('[MCP Server Log] Error during server startup/connection: ' + (error?.message || error));
-    if (error?.stack) {
-      logToFile('Startup Error Stack Trace: ' + error.stack);
+server.tool(
+    "get_workflow_run",
+    actions.GetWorkflowRunSchema.shape,
+    async (request: any) => {
+        const result = await actions.getWorkflowRun(request.owner, request.repo, request.runId);
+        return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+);
+
+server.tool(
+    "get_workflow_run_jobs",
+    actions.GetWorkflowRunJobsSchema.shape,
+    async (request: any) => {
+        const { owner, repo, runId, filter, page, perPage } = request;
+        const result = await actions.getWorkflowRunJobs(owner, repo, runId, filter, page, perPage);
+        return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+);
+
+server.tool(
+    "trigger_workflow",
+    actions.TriggerWorkflowSchema.shape,
+    async (request: any) => {
+        const { owner, repo, workflowId, ref, inputs } = request;
+        const result = await actions.triggerWorkflow(owner, repo, workflowId, ref, inputs);
+        return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+);
+
+server.tool(
+    "cancel_workflow_run",
+    actions.CancelWorkflowRunSchema.shape,
+    async (request: any) => {
+        const result = await actions.cancelWorkflowRun(request.owner, request.repo, request.runId);
+        return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+);
+
+server.tool(
+    "rerun_workflow",
+    actions.RerunWorkflowSchema.shape,
+    async (request: any) => {
+        const result = await actions.rerunWorkflowRun(request.owner, request.repo, request.runId);
+        return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+);
+
+// Wrap server logic in a try/catch for initialization errors
+try {
+    logToFile('[MCP Server Log] Server initialization complete. Ready for connection.');
+    // The server likely handles its own connection logic internally or expects a transport.
+    // We removed the explicit transport connection part as it might be SDK version dependent.
+} catch (error: any) {
+    logToFile(`[MCP Server Log] FATAL Error during server setup: ${error?.message || String(error)}`);
+    if (error instanceof Error && error.stack) {
+        logToFile(error.stack);
     }
     process.exit(1);
-  }
 }
 
-logToFile('[MCP Server Log] Calling runServer...');
-runServer().catch((error: any) => {
-  logToFile("Fatal error in main(): " + (error?.message || error));
-  if (error?.stack) {
-    logToFile('Main Catch Stack Trace: ' + error.stack);
-  }
-  process.exit(1);
+// Add other process event handlers
+process.on('unhandledRejection', (reason, promise) => {
+  logToFile(`[MCP Server Log] Unhandled Rejection at: ${promise}, reason: ${reason}`);
+  // Consider exiting or logging more details
+  // process.exit(1);
+});
+
+process.on('SIGINT', () => {
+  logToFile('[MCP Server Log] Received SIGINT. Exiting gracefully.');
+  // Add any cleanup logic here
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  logToFile('[MCP Server Log] Received SIGTERM. Exiting gracefully.');
+  // Add any cleanup logic here
+  process.exit(0);
 });
