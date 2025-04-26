@@ -82,11 +82,12 @@ logToFile('[MCP Server Log] Octokit initialized.');
 
 const server = new Server(
   {
-    // Restore original name and version
     name: "github-actions-mcp-server",
     version: VERSION, 
-  },
-  octokit
+    context: {
+      octokit: octokit
+    }
+  }
 );
 
 // Restore error formatting function
