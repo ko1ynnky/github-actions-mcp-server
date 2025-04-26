@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"; // Use McpServer
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"; // Transport for Windsurf
 import { 
     CallToolRequestSchema, 
     ListToolsRequestSchema 
@@ -205,8 +206,10 @@ server.tool(
 // Wrap server logic in a try/catch for initialization errors
 try {
     logToFile('[MCP Server Log] Server initialization complete. Ready for connection.');
-    // The server likely handles its own connection logic internally or expects a transport.
-    // We removed the explicit transport connection part as it might be SDK version dependent.
+    // Attach stdio transport so Windsurf can communicate
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    logToFile('[MCP Server Log] Connected via stdio transport.');
 } catch (error: any) {
     logToFile(`[MCP Server Log] FATAL Error during server setup: ${error?.message || String(error)}`);
     if (error instanceof Error && error.stack) {
