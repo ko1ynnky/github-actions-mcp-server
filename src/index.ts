@@ -6,7 +6,6 @@ setTimeout(() => {
   process.exit(0);
 }, 5000); // 5 seconds
 
-/*
 // Platform-independent entry point
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -289,4 +288,3 @@ runServer().catch((error) => {
   console.error("Fatal error in main():", error);
   process.exit(1);
 });
-*/
