@@ -12,25 +12,27 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-import { z } from 'zod';
+import { 
+    CallToolRequestSchema, 
+    ListToolsRequestSchema 
+} from "@modelcontextprotocol/sdk/types.js"; 
+import { z } from 'zod'; 
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
+// Restore GitHub specific imports
+import { Octokit } from "@octokit/rest";
 import * as actions from './operations/actions.js';
-import {
-  GitHubError,
-  GitHubValidationError,
-  GitHubResourceNotFoundError,
-  GitHubAuthenticationError,
-  GitHubPermissionError,
-  GitHubRateLimitError,
-  GitHubConflictError,
-  GitHubTimeoutError,
-  GitHubNetworkError,
-  isGitHubError,
+import { 
+    GitHubError, 
+    isGitHubError, 
+    GitHubValidationError,
+    GitHubResourceNotFoundError,
+    GitHubAuthenticationError,
+    GitHubPermissionError,
+    GitHubRateLimitError,
+    GitHubConflictError,
+    GitHubTimeoutError,
+    GitHubNetworkError,
 } from './common/errors.js';
 import { VERSION } from "./common/version.js";
 
@@ -63,24 +65,31 @@ process.on('uncaughtException', (error) => {
   if (error?.stack) {
     logToFile('Stack Trace: ' + error.stack);
   }
-  // Consider exiting gracefully or logging more details before exiting
   process.exit(1); // Ensure process exits on uncaught exceptions
 });
 
-logToFile('[MCP Server Log] Initializing GitHub Actions MCP Server...'); // Log 1
+logToFile('[MCP Server Log] Initializing GitHub Actions MCP Server...');
+
+// Restore auth logic
+const GITHUB_TOKEN = process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
+if (!GITHUB_TOKEN) {
+  logToFile('FATAL: GITHUB_PERSONAL_ACCESS_TOKEN environment variable is not set.');
+  process.exit(1);
+}
+logToFile('[MCP Server Log] GitHub token found.');
+const octokit = new Octokit({ auth: GITHUB_TOKEN });
+logToFile('[MCP Server Log] Octokit initialized.');
 
 const server = new Server(
   {
+    // Restore original name and version
     name: "github-actions-mcp-server",
-    version: VERSION,
+    version: VERSION, 
   },
-  {
-    capabilities: {
-      tools: {},
-    },
-  }
+  octokit
 );
 
+// Restore error formatting function
 function formatGitHubError(error: GitHubError): string {
   let message = `GitHub API Error: ${error.message}`;
   
@@ -108,67 +117,69 @@ function formatGitHubError(error: GitHubError): string {
   return message;
 }
 
+// Restore ListTools
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  logToFile('[MCP Server Log] Received ListTools request.'); // Log ListTools entry
+  logToFile('[MCP Server Log] Received ListTools request.'); 
   return {
     tools: [
-      {
-        name: "list_workflows",
+       {
+        toolId: "list_workflows",
         description: "List workflows in a GitHub repository",
         inputSchema: zodToJsonSchema(actions.ListWorkflowsSchema),
       },
       {
-        name: "get_workflow",
+        toolId: "get_workflow",
         description: "Get details of a specific workflow",
         inputSchema: zodToJsonSchema(actions.GetWorkflowSchema),
       },
       {
-        name: "get_workflow_usage",
+        toolId: "get_workflow_usage",
         description: "Get usage statistics of a workflow",
         inputSchema: zodToJsonSchema(actions.GetWorkflowUsageSchema),
       },
       {
-        name: "list_workflow_runs",
+        toolId: "list_workflow_runs",
         description: "List all workflow runs for a repository or a specific workflow",
         inputSchema: zodToJsonSchema(actions.ListWorkflowRunsSchema),
       },
       {
-        name: "get_workflow_run",
+        toolId: "get_workflow_run",
         description: "Get details of a specific workflow run",
         inputSchema: zodToJsonSchema(actions.GetWorkflowRunSchema),
       },
       {
-        name: "get_workflow_run_jobs",
+        toolId: "get_workflow_run_jobs",
         description: "Get jobs for a specific workflow run",
         inputSchema: zodToJsonSchema(actions.GetWorkflowRunJobsSchema),
       },
       {
-        name: "trigger_workflow",
+        toolId: "trigger_workflow",
         description: "Trigger a workflow run",
         inputSchema: zodToJsonSchema(actions.TriggerWorkflowSchema),
       },
       {
-        name: "cancel_workflow_run",
+        toolId: "cancel_workflow_run",
         description: "Cancel a workflow run",
         inputSchema: zodToJsonSchema(actions.CancelWorkflowRunSchema),
       },
       {
-        name: "rerun_workflow",
+        toolId: "rerun_workflow",
         description: "Re-run a workflow run",
         inputSchema: zodToJsonSchema(actions.RerunWorkflowSchema),
       },
-    ],
+    ]
   };
 });
 
+// Restore full CallTool
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  logToFile(`[MCP Server Log] Received CallTool request for tool: ${request.params.toolId}`); // Corrected: use toolId
+  logToFile(`[MCP Server Log] Received CallTool request for tool: ${request.params.toolId}`); 
   try {
     if (!request.params.arguments) {
       throw new Error("Arguments are required");
     }
 
-    switch (request.params.name) {
+    switch (request.params.toolId) { 
       case "list_workflows": {
         const args = actions.ListWorkflowsSchema.parse(request.params.arguments);
         const result = await actions.listWorkflows(
@@ -177,9 +188,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           args.page,
           args.perPage
         );
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        };
+        return { content: [{ type: "text", text: JSON.stringify(result) }] }; 
       }
       
       case "get_workflow": {
@@ -189,9 +198,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           args.repo,
           args.workflowId
         );
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        };
+         return { content: [{ type: "text", text: JSON.stringify(result) }] };
       }
       
       case "get_workflow_usage": {
@@ -201,9 +208,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           args.repo,
           args.workflowId
         );
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        };
+         return { content: [{ type: "text", text: JSON.stringify(result) }] };
       }
       
       case "list_workflow_runs": {
@@ -213,9 +218,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           workflowId,
           ...options
         });
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        };
+         return { content: [{ type: "text", text: JSON.stringify(result) }] };
       }
       
       case "get_workflow_run": {
@@ -225,9 +228,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           args.repo,
           args.runId
         );
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        };
+         return { content: [{ type: "text", text: JSON.stringify(result) }] };
       }
       
       case "get_workflow_run_jobs": {
@@ -241,9 +242,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           page,
           perPage
         );
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        };
+         return { content: [{ type: "text", text: JSON.stringify(result) }] };
       }
       
       case "trigger_workflow": {
@@ -256,9 +255,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           ref,
           inputs
         );
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        };
+         return { content: [{ type: "text", text: JSON.stringify(result) }] };
       }
       
       case "cancel_workflow_run": {
@@ -268,49 +265,47 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           args.repo,
           args.runId
         );
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        };
+         return { content: [{ type: "text", text: JSON.stringify(result) }] }; 
       }
       
       case "rerun_workflow": {
         const args = actions.RerunWorkflowSchema.parse(request.params.arguments);
-        const result = await actions.rerunWorkflowRun(
+        const result = await actions.rerunWorkflowRun( 
           args.owner,
           args.repo,
           args.runId
         );
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        };
+         return { content: [{ type: "text", text: JSON.stringify(result) }] }; 
       }
 
       default:
-        throw new Error(`Unknown tool: ${request.params.name}`);
+         logToFile(`[MCP Server Log] Unknown tool requested: ${request.params.toolId}`);
+         throw new Error(`Unknown tool ID: ${request.params.toolId}`);
     }
   } catch (error: any) {
-    logToFile(`[MCP Server Log] Error in CallTool handler for ${request.params.name}: ${error?.message || error}`); // Log caught errors
+    logToFile(`[MCP Server Log] Error in CallTool handler for ${request.params.toolId}: ${error?.message || error}`); 
     if (error?.stack) {
       logToFile('CallTool Error Stack Trace: ' + error.stack);
     }
-    if (error instanceof z.ZodError) {
+    // Restore full error handling
+     if (error instanceof z.ZodError) {
       throw new Error(`Invalid input: ${JSON.stringify(error.errors)}`);
     }
     if (isGitHubError(error)) {
       throw new Error(formatGitHubError(error));
     }
-    throw error;
+    throw error; 
   }
 });
 
 async function runServer() {
-  logToFile('[MCP Server Log] Entering runServer function...'); // Log 2
+  logToFile('[MCP Server Log] Entering runServer function...'); 
   try {
-    logToFile('[MCP Server Log] Creating StdioServerTransport...'); // Log 3
+    logToFile('[MCP Server Log] Creating StdioServerTransport...');
     const transport = new StdioServerTransport();
-    logToFile('[MCP Server Log] Starting server connection...'); // Log 4
+    logToFile('[MCP Server Log] Starting server connection...');
     await server.connect(transport);
-    logToFile('[MCP Server Log] Server connection established.'); // Log after connect
+    logToFile('[MCP Server Log] Server connection established.');
     
     // Attempt to keep the process alive explicitly
     logToFile('[MCP Server Log] Calling process.stdin.resume()...');
@@ -326,7 +321,7 @@ async function runServer() {
   }
 }
 
-logToFile('[MCP Server Log] Calling runServer...'); // Log 5
+logToFile('[MCP Server Log] Calling runServer...');
 runServer().catch((error: any) => {
   logToFile("Fatal error in main(): " + (error?.message || error));
   if (error?.stack) {
