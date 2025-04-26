@@ -7,6 +7,9 @@ setTimeout(() => {
 }, 5000); // 5 seconds
 
 // Platform-independent entry point
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -31,15 +34,39 @@ import {
 } from './common/errors.js';
 import { VERSION } from "./common/version.js";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const logFilePath = path.join(__dirname, '..', 'mcp-startup.log');
+
+// Simple file logger
+function logToFile(message: string) {
+  const timestamp = new Date().toISOString();
+  try {
+    // Ensure directory exists (optional, __dirname should exist)
+    // fs.mkdirSync(path.dirname(logFilePath), { recursive: true }); 
+    fs.appendFileSync(logFilePath, `[${timestamp}] ${message}\n`, 'utf8');
+  } catch (err) {
+    // Fallback if file logging fails
+    console.error(`[File Log Error] ${err}`);
+    console.error(`[Original Message] ${message}`);
+  }
+}
+
+// Clear log file on startup
+try { fs.writeFileSync(logFilePath, '', 'utf8'); } catch {} 
+
 // Add a global handler for uncaught exceptions
 process.on('uncaughtException', (error) => {
-  console.error('FATAL: Uncaught Exception:', error);
-  // Optionally log stack trace: console.error(error.stack);
+  logToFile('FATAL: Uncaught Exception: ' + (error?.message || error));
+  if (error?.stack) {
+    logToFile('Stack Trace: ' + error.stack);
+  }
   // Consider exiting gracefully or logging more details before exiting
   process.exit(1); // Ensure process exits on uncaught exceptions
 });
 
-console.log('[MCP Server Log] Initializing GitHub Actions MCP Server...'); // Log 1
+logToFile('[MCP Server Log] Initializing GitHub Actions MCP Server...'); // Log 1
 
 const server = new Server(
   {
@@ -270,21 +297,27 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 async function runServer() {
-  console.log('[MCP Server Log] Entering runServer function...'); // Log 2
+  logToFile('[MCP Server Log] Entering runServer function...'); // Log 2
   try {
-    console.log('[MCP Server Log] Creating StdioServerTransport...'); // Log 3
+    logToFile('[MCP Server Log] Creating StdioServerTransport...'); // Log 3
     const transport = new StdioServerTransport();
-    console.log('[MCP Server Log] Starting server...'); // Log 4
+    logToFile('[MCP Server Log] Starting server...'); // Log 4
     await server.connect(transport);
-    console.log('[MCP Server Log] Server started successfully.');
-  } catch (error) {
-    console.error('[MCP Server Log] Error during server startup:', error);
+    logToFile('[MCP Server Log] Server started successfully.');
+  } catch (error: any) {
+    logToFile('[MCP Server Log] Error during server startup: ' + (error?.message || error));
+    if (error?.stack) {
+      logToFile('Startup Error Stack Trace: ' + error.stack);
+    }
     process.exit(1);
   }
 }
 
-console.log('[MCP Server Log] Calling runServer...'); // Log 5
-runServer().catch((error) => {
-  console.error("Fatal error in main():", error);
+logToFile('[MCP Server Log] Calling runServer...'); // Log 5
+runServer().catch((error: any) => {
+  logToFile("Fatal error in main(): " + (error?.message || error));
+  if (error?.stack) {
+    logToFile('Main Catch Stack Trace: ' + error.stack);
+  }
   process.exit(1);
 });
