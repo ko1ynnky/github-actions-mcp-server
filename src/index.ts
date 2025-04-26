@@ -37,18 +37,19 @@ import { VERSION } from "./common/version.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const logFilePath = path.join(__dirname, '..', 'mcp-startup.log');
+const logFilePath = path.join(__dirname, 'mcp-startup.log');
 
 // Simple file logger
 function logToFile(message: string) {
   const timestamp = new Date().toISOString();
   try {
-    // Ensure directory exists (optional, __dirname should exist)
-    // fs.mkdirSync(path.dirname(logFilePath), { recursive: true }); 
     fs.appendFileSync(logFilePath, `[${timestamp}] ${message}\n`, 'utf8');
-  } catch (err) {
-    // Fallback if file logging fails
-    console.error(`[File Log Error] ${err}`);
+  } catch (err: any) {
+    const errorMsg = `[File Log Error] Failed to write to ${logFilePath}: ${err?.message || err}`;
+    console.error(errorMsg);
+    if (err?.stack) {
+      console.error(err.stack);
+    }
     console.error(`[Original Message] ${message}`);
   }
 }
@@ -108,6 +109,7 @@ function formatGitHubError(error: GitHubError): string {
 }
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
+  logToFile('[MCP Server Log] Received ListTools request.'); // Log ListTools entry
   return {
     tools: [
       {
@@ -160,6 +162,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 });
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  logToFile(`[MCP Server Log] Received CallTool request for tool: ${request.params.toolId}`); // Corrected: use toolId
   try {
     if (!request.params.arguments) {
       throw new Error("Arguments are required");
@@ -285,7 +288,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       default:
         throw new Error(`Unknown tool: ${request.params.name}`);
     }
-  } catch (error) {
+  } catch (error: any) {
+    logToFile(`[MCP Server Log] Error in CallTool handler for ${request.params.name}: ${error?.message || error}`); // Log caught errors
+    if (error?.stack) {
+      logToFile('CallTool Error Stack Trace: ' + error.stack);
+    }
     if (error instanceof z.ZodError) {
       throw new Error(`Invalid input: ${JSON.stringify(error.errors)}`);
     }
@@ -301,11 +308,17 @@ async function runServer() {
   try {
     logToFile('[MCP Server Log] Creating StdioServerTransport...'); // Log 3
     const transport = new StdioServerTransport();
-    logToFile('[MCP Server Log] Starting server...'); // Log 4
+    logToFile('[MCP Server Log] Starting server connection...'); // Log 4
     await server.connect(transport);
-    logToFile('[MCP Server Log] Server started successfully.');
+    logToFile('[MCP Server Log] Server connection established.'); // Log after connect
+    
+    // Attempt to keep the process alive explicitly
+    logToFile('[MCP Server Log] Calling process.stdin.resume()...');
+    process.stdin.resume();
+    logToFile('[MCP Server Log] process.stdin.resume() called.');
+    
   } catch (error: any) {
-    logToFile('[MCP Server Log] Error during server startup: ' + (error?.message || error));
+    logToFile('[MCP Server Log] Error during server startup/connection: ' + (error?.message || error));
     if (error?.stack) {
       logToFile('Startup Error Stack Trace: ' + error.stack);
     }
