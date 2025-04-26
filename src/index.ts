@@ -52,7 +52,8 @@ function logToFile(message: string) {
 }
 
 // Clear log file on startup
-try { fs.writeFileSync(logFilePath, '', 'utf8'); } catch {}
+fs.writeFileSync(logFilePath, '', 'utf8'); // Remove try/catch
+logToFile('[MCP Server Log] Log file cleared/initialized.'); // Add confirmation log
 
 // Add a global handler for uncaught exceptions
 process.on('uncaughtException', (error: Error) => { // Type error
@@ -66,12 +67,12 @@ process.on('uncaughtException', (error: Error) => { // Type error
 logToFile('[MCP Server Log] Initializing GitHub Actions MCP Server...');
 
 // Restore auth logic
-const GITHUB_TOKEN = process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
+const GITHUB_TOKEN = process.env.GITHUB_PERSONAL_ACCESS_TOKEN; // Restore env check
 if (!GITHUB_TOKEN) {
   logToFile('FATAL: GITHUB_PERSONAL_ACCESS_TOKEN environment variable is not set.');
   process.exit(1);
 }
-logToFile('[MCP Server Log] GitHub token found.');
+logToFile('[MCP Server Log] GitHub token found.'); // Restore original log message
 const octokit = new Octokit({ auth: GITHUB_TOKEN });
 logToFile('[MCP Server Log] Octokit initialized.');
 
