@@ -8,6 +8,42 @@ type RequestOptions = {
   headers?: Record<string, string>;
 }
 
+// MCP Tool response types
+export type TextContent = { type: "text"; text: string };
+export type ToolResponse = { content: TextContent[] };
+
+/**
+ * Create a successful tool response with formatted text content
+ * 
+ * @param data The data to include in the response
+ * @param format Optional format function to convert data to string (defaults to JSON.stringify)
+ * @returns Properly formatted MCP tool response
+ */
+export function createToolResponse(data: unknown, format?: (data: unknown) => string): ToolResponse {
+  const text = format ? format(data) : JSON.stringify(data, null, 2);
+  return { content: [{ type: "text", text }] };
+}
+
+/**
+ * Create an error tool response with formatted error message
+ * 
+ * @param error The error to format
+ * @returns Properly formatted MCP tool response with error message
+ */
+export function createErrorResponse(error: unknown): ToolResponse {
+  let errorMessage: string;
+  
+  if (error instanceof Error) {
+    errorMessage = error.message;
+  } else if (typeof error === 'string') {
+    errorMessage = error;
+  } else {
+    errorMessage = 'Unknown error occurred';
+  }
+
+  return { content: [{ type: "text", text: errorMessage }] };
+}
+
 async function parseResponseBody(response: Response): Promise<unknown> {
   const contentType = response.headers.get("content-type");
   if (contentType?.includes("application/json")) {

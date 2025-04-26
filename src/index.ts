@@ -17,6 +17,7 @@ import {
   isGitHubError,
 } from './common/errors.js';
 import { VERSION } from "./common/version.js";
+import { createToolResponse, createErrorResponse } from "./common/utils.js";
 
 function formatGitHubError(error: GitHubError): string {
   let message = `GitHub API Error: ${error.message}`;
@@ -43,16 +44,24 @@ function formatGitHubError(error: GitHubError): string {
   return message;
 }
 
+/**
+ * Handle errors in a consistent way
+ * 
+ * @param error The error to handle
+ * @returns An appropriate error message
+ * @throws Error with formatted message
+ */
 const errorHandler = (error: unknown) => {
   if (error instanceof z.ZodError) {
-    throw new Error(`Invalid input: ${JSON.stringify(error.errors)}`);
+    return new Error(`Invalid input: ${JSON.stringify(error.errors)}`);
   }
   if (isGitHubError(error)) {
-    throw new Error(formatGitHubError(error as GitHubError));
+    return new Error(formatGitHubError(error as GitHubError));
   }
-  throw error;
+  return error instanceof Error ? error : new Error(String(error));
 };
 
+// Create the MCP server
 const server = new McpServer({
   name: "github-actions-mcp-server",
   version: VERSION,
@@ -62,6 +71,7 @@ const server = new McpServer({
   },
 });
 
+// Type definitions for tool parameters
 type ListWorkflowsParams = z.infer<typeof actions.ListWorkflowsSchema>;
 type GetWorkflowParams = z.infer<typeof actions.GetWorkflowSchema>;
 type GetWorkflowUsageParams = z.infer<typeof actions.GetWorkflowUsageSchema>;
@@ -72,6 +82,9 @@ type TriggerWorkflowParams = z.infer<typeof actions.TriggerWorkflowSchema>;
 type CancelWorkflowRunParams = z.infer<typeof actions.CancelWorkflowRunSchema>;
 type RerunWorkflowParams = z.infer<typeof actions.RerunWorkflowSchema>;
 
+/**
+ * Register the list_workflows tool
+ */
 server.tool(
   "list_workflows",
   "List workflows in a GitHub repository",
@@ -84,14 +97,16 @@ server.tool(
         params.page,
         params.perPage
       );
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return createToolResponse(result);
     } catch (error) {
-      errorHandler(error);
-      return { content: [{ type: "text", text: "Error" }] };
+      return createErrorResponse(errorHandler(error));
     }
   },
 );
 
+/**
+ * Register the get_workflow tool
+ */
 server.tool(
   "get_workflow",
   "Get details of a specific workflow",
@@ -103,14 +118,16 @@ server.tool(
         params.repo,
         params.workflowId
       );
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return createToolResponse(result);
     } catch (error) {
-      errorHandler(error);
-      return { content: [{ type: "text", text: "Error" }] };
+      return createErrorResponse(errorHandler(error));
     }
   },
 );
 
+/**
+ * Register the get_workflow_usage tool
+ */
 server.tool(
   "get_workflow_usage",
   "Get usage statistics of a workflow",
@@ -122,14 +139,16 @@ server.tool(
         params.repo,
         params.workflowId
       );
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return createToolResponse(result);
     } catch (error) {
-      errorHandler(error);
-      return { content: [{ type: "text", text: "Error" }] };
+      return createErrorResponse(errorHandler(error));
     }
   },
 );
 
+/**
+ * Register the list_workflow_runs tool
+ */
 server.tool(
   "list_workflow_runs",
   "List all workflow runs for a repository or a specific workflow",
@@ -141,14 +160,16 @@ server.tool(
         workflowId,
         ...options
       });
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return createToolResponse(result);
     } catch (error) {
-      errorHandler(error);
-      return { content: [{ type: "text", text: "Error" }] };
+      return createErrorResponse(errorHandler(error));
     }
   },
 );
 
+/**
+ * Register the get_workflow_run tool
+ */
 server.tool(
   "get_workflow_run",
   "Get details of a specific workflow run",
@@ -160,14 +181,16 @@ server.tool(
         params.repo,
         params.runId
       );
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return createToolResponse(result);
     } catch (error) {
-      errorHandler(error);
-      return { content: [{ type: "text", text: "Error" }] };
+      return createErrorResponse(errorHandler(error));
     }
   },
 );
 
+/**
+ * Register the get_workflow_run_jobs tool
+ */
 server.tool(
   "get_workflow_run_jobs",
   "Get details of a specific workflow run",
@@ -183,14 +206,16 @@ server.tool(
         page,
         perPage
       );
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return createToolResponse(result);
     } catch (error) {
-      errorHandler(error);
-      return { content: [{ type: "text", text: "Error" }] };
+      return createErrorResponse(errorHandler(error));
     }
   },
 );
 
+/**
+ * Register the trigger_workflow tool
+ */
 server.tool(
   "trigger_workflow",
   "Trigger a workflow run",
@@ -205,14 +230,16 @@ server.tool(
         ref,
         inputs
       );
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return createToolResponse(result);
     } catch (error) {
-      errorHandler(error);
-      return { content: [{ type: "text", text: "Error" }] };
+      return createErrorResponse(errorHandler(error));
     }
   },
 );
 
+/**
+ * Register the cancel_workflow_run tool
+ */
 server.tool(
   "cancel_workflow_run",
   "Cancel a workflow run",
@@ -224,14 +251,16 @@ server.tool(
         params.repo,
         params.runId
       );
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return createToolResponse(result);
     } catch (error) {
-      errorHandler(error);
-      return { content: [{ type: "text", text: "Error" }] };
+      return createErrorResponse(errorHandler(error));
     }
   },
 );
 
+/**
+ * Register the rerun_workflow tool
+ */
 server.tool(
   "rerun_workflow",
   "Re-run a workflow run",
@@ -243,20 +272,23 @@ server.tool(
         params.repo,
         params.runId
       );
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      return createToolResponse(result);
     } catch (error) {
-      errorHandler(error);
-      return { content: [{ type: "text", text: "Error" }] };
+      return createErrorResponse(errorHandler(error));
     }
   },
 );
 
+/**
+ * Start the server with a stdio transport
+ */
 async function runServer() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error("GitHub Actions MCP Server running on stdio");
 }
 
+// Run the server and handle any fatal errors
 runServer().catch((error) => {
   console.error("Fatal error in main():", error);
   process.exit(1);

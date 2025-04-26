@@ -70,7 +70,7 @@ export const TriggerWorkflowSchema = z.object({
   repo: z.string().describe("Repository name"),
   workflowId: z.union([z.string(), z.number()]).describe("The ID of the workflow or filename"),
   ref: z.string().describe("The reference of the workflow run (branch, tag, or SHA)"),
-  inputs: z.record(z.string(), z.string()).optional().describe("Input parameters for the workflow"),
+  inputs: z.record(z.string()).optional().describe("Input parameters for the workflow"),
 });
 
 // Cancel workflow run schema
@@ -83,17 +83,34 @@ export const CancelWorkflowRunSchema = z.object({
 // Rerun workflow schema
 export const RerunWorkflowSchema = CancelWorkflowRunSchema;
 
+// Define response types
+export type WorkflowsResponse = z.infer<typeof WorkflowsSchema>;
+export type WorkflowResponse = z.infer<typeof WorkflowSchema>;
+export type WorkflowUsageResponse = z.infer<typeof WorkflowUsageSchema>;
+export type WorkflowRunsResponse = z.infer<typeof WorkflowRunsSchema>;
+export type WorkflowRunResponse = z.infer<typeof WorkflowRunSchema>;
+export type JobsResponse = z.infer<typeof JobsSchema>;
+export type SuccessResponse = { success: boolean; message: string };
+
 /**
  * Function implementations
  */
 
-// List workflows in a repository
+/**
+ * List workflows in a repository
+ * 
+ * @param owner Repository owner (username or organization)
+ * @param repo Repository name 
+ * @param page Optional page number for pagination
+ * @param perPage Optional results per page (max 100)
+ * @returns Workflows listing information
+ */
 export async function listWorkflows(
   owner: string, 
   repo: string, 
   page?: number, 
   perPage?: number
-) {
+): Promise<WorkflowsResponse> {
   owner = validateOwnerName(owner);
   repo = validateRepositoryName(repo);
 
@@ -106,12 +123,19 @@ export async function listWorkflows(
   return WorkflowsSchema.parse(response);
 }
 
-// Get a workflow
+/**
+ * Get a specific workflow by ID or filename
+ * 
+ * @param owner Repository owner (username or organization)
+ * @param repo Repository name
+ * @param workflowId The ID of the workflow or filename
+ * @returns Workflow details
+ */
 export async function getWorkflow(
   owner: string, 
   repo: string, 
   workflowId: string | number
-) {
+): Promise<WorkflowResponse> {
   owner = validateOwnerName(owner);
   repo = validateRepositoryName(repo);
 
@@ -120,12 +144,19 @@ export async function getWorkflow(
   return WorkflowSchema.parse(response);
 }
 
-// Get workflow usage
+/**
+ * Get usage statistics of a workflow
+ * 
+ * @param owner Repository owner (username or organization)
+ * @param repo Repository name
+ * @param workflowId The ID of the workflow or filename
+ * @returns Workflow usage statistics
+ */
 export async function getWorkflowUsage(
   owner: string, 
   repo: string, 
   workflowId: string | number
-) {
+): Promise<WorkflowUsageResponse> {
   owner = validateOwnerName(owner);
   repo = validateRepositoryName(repo);
 
@@ -134,7 +165,14 @@ export async function getWorkflowUsage(
   return WorkflowUsageSchema.parse(response);
 }
 
-// List workflow runs
+/**
+ * List workflow runs with filtering options
+ * 
+ * @param owner Repository owner (username or organization)
+ * @param repo Repository name
+ * @param options Filter options including workflowId, actor, branch, etc.
+ * @returns List of workflow runs matching the criteria
+ */
 export async function listWorkflowRuns(
   owner: string, 
   repo: string, 
@@ -150,7 +188,7 @@ export async function listWorkflowRuns(
     page?: number,
     perPage?: number
   } = {}
-) {
+): Promise<WorkflowRunsResponse> {
   owner = validateOwnerName(owner);
   repo = validateRepositoryName(repo);
 
@@ -177,12 +215,19 @@ export async function listWorkflowRuns(
   return WorkflowRunsSchema.parse(response);
 }
 
-// Get a workflow run
+/**
+ * Get details of a specific workflow run
+ * 
+ * @param owner Repository owner (username or organization)
+ * @param repo Repository name
+ * @param runId The ID of the workflow run
+ * @returns Workflow run details
+ */
 export async function getWorkflowRun(
   owner: string, 
   repo: string, 
   runId: number
-) {
+): Promise<WorkflowRunResponse> {
   owner = validateOwnerName(owner);
   repo = validateRepositoryName(repo);
 
@@ -191,7 +236,17 @@ export async function getWorkflowRun(
   return WorkflowRunSchema.parse(response);
 }
 
-// Get workflow run jobs
+/**
+ * Get jobs for a specific workflow run
+ * 
+ * @param owner Repository owner (username or organization)
+ * @param repo Repository name
+ * @param runId The ID of the workflow run
+ * @param filter Optional filter for jobs (latest or all)
+ * @param page Optional page number for pagination
+ * @param perPage Optional results per page (max 100)
+ * @returns List of jobs for the workflow run
+ */
 export async function getWorkflowRunJobs(
   owner: string, 
   repo: string, 
@@ -199,7 +254,7 @@ export async function getWorkflowRunJobs(
   filter?: 'latest' | 'all', 
   page?: number, 
   perPage?: number
-) {
+): Promise<JobsResponse> {
   owner = validateOwnerName(owner);
   repo = validateRepositoryName(repo);
 
@@ -213,14 +268,23 @@ export async function getWorkflowRunJobs(
   return JobsSchema.parse(response);
 }
 
-// Trigger a workflow run
+/**
+ * Trigger a workflow run
+ * 
+ * @param owner Repository owner (username or organization)
+ * @param repo Repository name
+ * @param workflowId The ID of the workflow or filename
+ * @param ref The reference to run the workflow on (branch, tag, or SHA)
+ * @param inputs Optional input parameters for the workflow
+ * @returns Success status and message
+ */
 export async function triggerWorkflow(
   owner: string, 
   repo: string, 
   workflowId: string | number, 
   ref: string, 
   inputs?: Record<string, string>
-) {
+): Promise<SuccessResponse> {
   owner = validateOwnerName(owner);
   repo = validateRepositoryName(repo);
 
@@ -244,12 +308,19 @@ export async function triggerWorkflow(
   return { success: true, message: `Workflow ${workflowId} triggered on ${ref}` };
 }
 
-// Cancel a workflow run
+/**
+ * Cancel a workflow run
+ * 
+ * @param owner Repository owner (username or organization)
+ * @param repo Repository name
+ * @param runId The ID of the workflow run
+ * @returns Success status and message
+ */
 export async function cancelWorkflowRun(
   owner: string, 
   repo: string, 
   runId: number
-) {
+): Promise<SuccessResponse> {
   owner = validateOwnerName(owner);
   repo = validateRepositoryName(repo);
 
@@ -260,12 +331,19 @@ export async function cancelWorkflowRun(
   return { success: true, message: `Workflow run ${runId} cancelled` };
 }
 
-// Rerun a workflow run
+/**
+ * Rerun a workflow run
+ * 
+ * @param owner Repository owner (username or organization)
+ * @param repo Repository name
+ * @param runId The ID of the workflow run
+ * @returns Success status and message
+ */
 export async function rerunWorkflowRun(
   owner: string, 
   repo: string, 
   runId: number
-) {
+): Promise<SuccessResponse> {
   owner = validateOwnerName(owner);
   repo = validateRepositoryName(repo);
 
