@@ -21,7 +21,7 @@
     "test": "echo No tests specified && exit 0"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.10.1",
+    "@modelcontextprotocol/sdk": "1.10.2",
     "@types/node": "22.14.1",
     "node-fetch": "^3.3.2",
     "@octokit/rest": "^21.0.1",
