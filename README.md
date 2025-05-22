@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/ko1ynnky-github-actions-mcp-server-badge.png)](https://mseep.ai/app/ko1ynnky-github-actions-mcp-server)
+
 # GitHub Actions MCP Server
 
 [![smithery badge](https://smithery.ai/badge/@ko1ynnky/github-actions-mcp-server)](https://smithery.ai/server/@ko1ynnky/github-actions-mcp-server)
