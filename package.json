@@ -27,7 +27,7 @@
     "@octokit/rest": "^22.0.0",
     "universal-user-agent": "^7.0.3",
     "zod": "^3.25.46",
-    "zod-to-json-schema": "^3.24.5"
+    "zod-to-json-schema": "^3.24.6"
   },
   "devDependencies": {
     "typescript": "^5.8.3"
